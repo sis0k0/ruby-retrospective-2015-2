@@ -19,6 +19,8 @@ class OperationMessage
 end
 
 class Commit
+  TIME_FORMAT = '%a %b %-d %H:%M %Y %z'
+
   attr_reader :index, :date, :message, :hash, :files, :objects
   @@commits_count = 0
 
@@ -26,14 +28,14 @@ class Commit
     @index = @@commits_count
     @date = Time.now
     @message = message
-    @hash = Digest::SHA1.hexdigest "#{date}#{message}"
-    @files = {
-      changed: stage[:changed].dup,
-      removed: stage[:removed].dup,
-    }
+    @files = stage.clone
     @objects = repository_files.values
 
     @@commits_count += 1
+  end
+
+  def hash
+    Digest::SHA1.hexdigest "#{@date.strftime(TIME_FORMAT)}#{@message}"
   end
 
   def changed
@@ -45,8 +47,8 @@ class Commit
   end
 
   def to_s
-    name = "Commit #{@hash}\n"
-    date = "Date: #{@date.strftime('%a %b %-d %H:%M %Y %z')}\n\n"
+    name = "Commit #{hash}\n"
+    date = "Date: #{@date.strftime(TIME_FORMAT)}\n\n"
     message = "\t#{@message}\n\n"
 
     name << date << message
@@ -117,7 +119,7 @@ class Branch
 
   def head
     if @branches[@current].length == 0
-      OperationMessage.new(false, "Branch #{@current}\
+      OperationMessage.new(false, "Branch #{@current} \
 does not have any commits yet.")
     else
       last_commit = @branches[@current].last
@@ -154,7 +156,7 @@ does not have any commits yet.")
 end
 
 class ObjectStore
-        attr_accessor :branch
+  attr_accessor :branch
 
   class << self
     def init(&block)
@@ -162,55 +164,55 @@ class ObjectStore
     end
   end
 
-        def initialize(&block)
-                @branch = Branch.new
-    @stage = {changed: {}, removed: {}}
+    def initialize(&block)
+      @branch = Branch.new
+      @stage = {changed: {}, removed: {}}
 
-    if block_given?
-      instance_eval &block
+      if block_given?
+        instance_eval &block
+      end
     end
-        end
 
-        def add(name, object)
-    @stage[:changed][name.to_sym] = object
-    OperationMessage.new(true, "Added #{name} to stage.", object)
-        end
-
-        def commit(message)
-    if @stage[:changed].length == 0 and @stage[:removed].length == 0
-      OperationMessage.new(false, "Nothing to commit, working directory clean.")
-    else
-      new_commit = @branch.commit(message, @stage)
-      changed_files = new_commit.changed.length + new_commit.removed.length
-      message = "#{message}\n\t#{changed_files} objects changed"
-
-      @stage[:changed].clear
-      @stage[:removed].clear
-
-      OperationMessage.new(true, message, new_commit)
+    def add(name, object)
+      @stage[:changed][name.to_sym] = object
+      OperationMessage.new(true, "Added #{name} to stage.", object)
     end
-        end
 
-        def remove(name)
-    object = @branch.get_file(name)
-    unless object
-      OperationMessage.new(false, "Object #{name} is not committed.")
-    else
-      @stage[:removed][name.to_sym] = object
-      OperationMessage.new(true, "Added #{name} for removal.", object)
+    def commit(message)
+      if @stage[:changed].length == 0 and @stage[:removed].length == 0
+        OperationMessage.new(false, "Nothing to commit, working \
+directory clean.")
+      else
+        new_commit = @branch.commit(message, @stage)
+        changed_files = new_commit.changed.length + new_commit.removed.length
+        message = "#{message}\n\t#{changed_files} objects changed"
+
+        clear_stage
+
+        OperationMessage.new(true, message, new_commit)
+      end
     end
-        end
 
-        def checkout(commit_hash)
-    last_commit = @branch.get_commit(commit_hash)
-
-    unless last_commit
-      OperationMessage.new(false, "Commit #{commit_hash} does not exist.")
-    else
-      @branch.checkout_commit(last_commit)
-      OperationMessage.new(true,  "HEAD is now at #{commit_hash}.", last_commit)
+    def remove(name)
+      object = @branch.get_file(name)
+      unless object
+        OperationMessage.new(false, "Object #{name} is not committed.")
+      else
+        @stage[:removed][name.to_sym] = object
+        OperationMessage.new(true, "Added #{name} for removal.", object)
+      end
     end
-        end
+
+    def checkout(commit_hash)
+      head = @branch.get_commit(commit_hash)
+
+      unless head
+        OperationMessage.new(false, "Commit #{commit_hash} does not exist.")
+      else
+        @branch.checkout_commit(head)
+        OperationMessage.new(true,  "HEAD is now at #{commit_hash}.", head)
+      end
+    end
 
   def log(branch = @branch.current)
     message = @branch.log(branch)
@@ -234,5 +236,12 @@ does not have any commits yet.")
     else
       OperationMessage.new(true, "Found object #{name}.", object)
     end
+  end
+
+  private
+
+  def clear_stage
+    @stage[:changed].clear
+    @stage[:removed].clear
   end
 end
