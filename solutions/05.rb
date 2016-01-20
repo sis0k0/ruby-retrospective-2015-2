@@ -1,9 +1,19 @@
 require 'digest/sha1'
 
+module OperationMessageHelpers
+  def success(message, result = nil)
+    OperationMessage.new(successful: true, message: message, result: result)
+  end
+
+  def error(message)
+    OperationMessage.new(successful: false, message: message)
+  end
+end
+
 class OperationMessage
   attr_reader :message, :result
 
-  def initialize(successful, message, result = nil)
+  def initialize(successful:, message:, result: nil)
     @successful = successful
     @message = message
     @result = result
@@ -19,6 +29,7 @@ class OperationMessage
 end
 
 class ObjectStore
+  include OperationMessageHelpers
 
   class Commit
     TIME_FORMAT = '%a %b %-d %H:%M %Y %z'
@@ -58,6 +69,8 @@ class ObjectStore
   end
 
   class Branch
+    include OperationMessageHelpers
+
     attr_reader :current
 
     def initialize
@@ -70,31 +83,31 @@ class ObjectStore
       name = name.to_sym
 
       if @branches.has_key?(name)
-        OperationMessage.new(false, "Branch #{name} already exists.")
+        error("Branch #{name} already exists.")
       else
         @branches[name] = @branches[@current].dup
         @files[name] = @files[@current].dup
-        OperationMessage.new(true, "Created branch #{name}.")
+        success("Created branch #{name}.")
       end
     end
 
     def checkout(name)
       unless @branches.has_key?(name.to_sym)
-        OperationMessage.new(false, "Branch #{name} does not exist.")
+        error("Branch #{name} does not exist.")
       else
         @current = name.to_sym
-        OperationMessage.new(true, "Switched to branch #{name}.")
+        success("Switched to branch #{name}.")
       end
     end
 
     def remove(name)
       if not @branches.has_key?(name.to_sym)
-        OperationMessage.new(false, "Branch #{name} does not exist.")
+        error("Branch #{name} does not exist.")
       elsif name.to_sym == @current
-        OperationMessage.new(false, "Cannot remove current branch.")
+        error("Cannot remove current branch.")
       else
         @branches.delete(name.to_sym)
-        OperationMessage.new(true, "Removed branch #{name}.")
+        success("Removed branch #{name}.")
       end
     end
 
@@ -106,7 +119,7 @@ class ObjectStore
       end
       message.chop!
 
-      OperationMessage.new(true, message)
+      success(message)
     end
 
     def commit(message, stage)
@@ -121,11 +134,10 @@ class ObjectStore
 
     def head
       if @branches[@current].length == 0
-        OperationMessage.new(false, "Branch #{@current} \
-does not have any commits yet.")
+        error("Branch #{@current} does not have any commits yet.")
       else
         last_commit = @branches[@current].last
-        OperationMessage.new(true, last_commit.message, last_commit)
+        success(last_commit.message, last_commit)
       end
     end
 
@@ -176,31 +188,29 @@ does not have any commits yet.")
 
   def add(name, object)
     @stage[:changed][name.to_sym] = object
-    OperationMessage.new(true, "Added #{name} to stage.", object)
+    success("Added #{name} to stage.", object)
   end
 
   def commit(message)
     if @stage[:changed].length == 0 and @stage[:removed].length == 0
-      OperationMessage.new(false, "Nothing to commit, working \
-directory clean.")
+      error("Nothing to commit, working directory clean.")
     else
       new_commit = @branch.commit(message, @stage)
       changed_files = new_commit.changed.length + new_commit.removed.length
       message = "#{message}\n\t#{changed_files} objects changed"
 
       clear_stage
-
-      OperationMessage.new(true, message, new_commit)
+      success(message, new_commit)
     end
   end
 
   def remove(name)
     object = @branch.get_file(name)
     unless object
-      OperationMessage.new(false, "Object #{name} is not committed.")
+      error("Object #{name} is not committed.")
     else
       @stage[:removed][name.to_sym] = object
-      OperationMessage.new(true, "Added #{name} for removal.", object)
+      success("Added #{name} for removal.", object)
     end
   end
 
@@ -208,10 +218,10 @@ directory clean.")
     head = @branch.get_commit(commit_hash)
 
     unless head
-      OperationMessage.new(false, "Commit #{commit_hash} does not exist.")
+      error("Commit #{commit_hash} does not exist.")
     else
       @branch.checkout_commit(head)
-      OperationMessage.new(true,  "HEAD is now at #{commit_hash}.", head)
+      success("HEAD is now at #{commit_hash}.", head)
     end
   end
 
@@ -219,10 +229,9 @@ directory clean.")
     message = @branch.log(branch)
 
     unless message and not message.empty?
-      OperationMessage.new(false, "Branch #{branch} \
-does not have any commits yet.")
+      error("Branch #{branch} does not have any commits yet.")
     else
-      OperationMessage.new(true, message)
+      success(message)
     end
   end
 
@@ -233,9 +242,9 @@ does not have any commits yet.")
   def get(name)
     object = @branch.get_file(name)
     unless object
-      OperationMessage.new(false, "Object #{name} is not committed.")
+      error("Object #{name} is not committed.")
     else
-      OperationMessage.new(true, "Found object #{name}.", object)
+      success("Found object #{name}.", object)
     end
   end
 
