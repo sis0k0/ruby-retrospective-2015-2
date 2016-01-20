@@ -60,11 +60,11 @@ class ObjectStore
     end
 
     def to_s
-      name = "Commit #{hash}\n"
-      date = "Date: #{@date.strftime(TIME_FORMAT)}\n\n"
-      message = "\t#{@message}\n\n"
+      formatted_name = "Commit #{hash}\n"
+      formatted_date = "Date: #{@date.strftime(TIME_FORMAT)}\n\n"
+      formatted_message = "\t#{@message}\n\n"
 
-      name << date << message
+      "#{formatted_name}#{formatted_date}#{formatted_message}"
     end
   end
 
@@ -164,6 +164,7 @@ class ObjectStore
     end
 
     private
+
     def list_prefix(branch_name)
       branch_name == :master ? "* " : "  "
     end
