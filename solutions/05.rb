@@ -92,11 +92,11 @@ class ObjectStore
     end
 
     def checkout(name)
-      unless @branches.has_key?(name.to_sym)
-        error("Branch #{name} does not exist.")
-      else
+      if @branches.has_key?(name.to_sym)
         @current = name.to_sym
         success("Switched to branch #{name}.")
+      else
+        error("Branch #{name} does not exist.")
       end
     end
 
@@ -206,33 +206,30 @@ class ObjectStore
 
   def remove(name)
     object = @branch.get_file(name)
-    unless object
-      error("Object #{name} is not committed.")
-    else
+    if object
       @stage[:removed][name.to_sym] = object
       success("Added #{name} for removal.", object)
+    else
+      error("Object #{name} is not committed.")
     end
   end
 
   def checkout(commit_hash)
     head = @branch.get_commit(commit_hash)
 
-    unless head
-      error("Commit #{commit_hash} does not exist.")
-    else
+    if head
       @branch.checkout_commit(head)
       success("HEAD is now at #{commit_hash}.", head)
+    else
+      error("Commit #{commit_hash} does not exist.")
     end
   end
 
   def log(branch = @branch.current)
-    message = @branch.log(branch)
+    log = @branch.log(branch)
+    error_message = "Branch #{branch} does not have any commits yet."
 
-    unless message and not message.empty?
-      error("Branch #{branch} does not have any commits yet.")
-    else
-      success(message)
-    end
+    (log and not log.empty?) ? success(log) : error(error_message)
   end
 
   def head
@@ -241,11 +238,10 @@ class ObjectStore
 
   def get(name)
     object = @branch.get_file(name)
-    unless object
-      error("Object #{name} is not committed.")
-    else
-      success("Found object #{name}.", object)
-    end
+    success_message = "Found object #{name}."
+    error_message = "Object #{name} is not committed."
+
+    object ? success(success_message, object) : error(error_message)
   end
 
   private
