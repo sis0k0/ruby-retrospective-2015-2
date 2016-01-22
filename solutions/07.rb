@@ -13,12 +13,12 @@ module LazyMode
 
     def initialize(string)
       date = string.split(' ')[0].split('-').map { |s| s.to_i }
-      @year = date[0]
-      @month = date[1]
-      @day = date[2]
+      @year, @month, @day = date
 
       repeat = string.split(' ')[1]
       @step = calculate_step(repeat) unless repeat.nil?
+
+      @string = string
     end
 
     def <=>(other)
@@ -32,17 +32,7 @@ module LazyMode
     end
 
     def to_s
-      year = add_prefix(@year.to_s, 4, PREFIX)
-      month = add_prefix(@month.to_s, 2, PREFIX)
-      day = add_prefix(@day.to_s, 2, PREFIX)
-
-      [year, month, day].join('-')
-    end
-
-    private
-
-    def add_prefix(string, count, prefix)
-      string.rjust(count, prefix)
+      @string
     end
 
     def put_in_ranges
