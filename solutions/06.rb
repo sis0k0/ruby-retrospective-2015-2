@@ -62,8 +62,8 @@ module TurtleGraphics
   end
 
   module Canvas
-    def calculate_max_frequency(matrix)
-      matrix.rows.collect { |row| row.max }.max
+    def max_frequency
+      @matrix.rows.collect { |row| row.max }.max
     end
 
     class ASCII
@@ -74,12 +74,11 @@ module TurtleGraphics
       end
 
       def build(matrix)
-        max_frequency = calculate_max_frequency(matrix)
-        interval = (1.0 / max_frequency).to_f
+        @matrix = matrix
 
         canvas = []
         matrix.rows.each do |row|
-          row.each { |cell| canvas << symbol(cell, max_frequency) }
+          row.each { |cell| canvas << symbol(cell) }
           canvas << "\n"
         end
 
@@ -88,12 +87,12 @@ module TurtleGraphics
 
       private
 
-      def symbol(cell, max_frequency)
-        index = symbol_index(cell, max_frequency)
+      def symbol(cell)
+        index = symbol_index(cell)
         (index == @symbols.length) ? @symbols.last : @symbols[index]
       end
 
-      def symbol_index(cell, max_frequency)
+      def symbol_index(cell)
         interval = (1.0 / max_frequency).to_f
         cell / (max_frequency * interval)
       end
@@ -107,6 +106,8 @@ module TurtleGraphics
       end
 
       def build(matrix)
+        @matrix = matrix
+
         %{
         <!DOCTYPE html>
         <html>
@@ -153,21 +154,24 @@ module TurtleGraphics
       end
 
       def table(matrix)
-        max_frequency = calculate_max_frequency(matrix)
-
         table = ["<table>"]
-        matrix.rows.each { |row| table << join_row(row, max_frequency) }
+        matrix.rows.each { |row| table << join_row(row) }
         table << "</table>"
         table.join
       end
 
-      def join_row(row, max_frequency)
+      def join_row(row)
         result = "<tr>"
-        row.each do |cell|
-          cell_intensity = cell.to_f / max_frequency
-          result << format('<td style="opacity: %.2f"></td>', cell_intensity)
-        end
+        row.each { |cell| result << join_cell(cell) }
         result << "</tr>"
+      end
+
+      def join_cell(cell)
+        format('<td style="opacity: %.2f"></td>', intensity(cell))
+      end
+
+      def intensity(cell)
+        cell.to_f / max_frequency
       end
     end
   end
