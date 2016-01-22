@@ -122,9 +122,7 @@ module LazyMode
     end
 
     def weekly_agenda(from)
-      week = []
-      0.upto(6) { |i| week << from.dup + i }
-
+      week = 0.upto(6).map { |i| from.dup + i }
       weekly_notes = week.map { |day| daily_notes(day) }.flatten!
 
       Agenda.new weekly_notes
