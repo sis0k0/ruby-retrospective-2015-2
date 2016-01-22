@@ -51,15 +51,11 @@ module LazyMode
   end
 
   class Note
-    attr_reader :header, :body, :status, :tags
-    attr_reader :file_name, :file
-    attr_reader :scheduled
+    attr_reader :header, :body, :status, :tags, :file, :scheduled
     attr_accessor :date
 
     def initialize(header, file, *tags, &block)
       @header, @file, @tags = header, file, tags
-      @file_name = file.name
-      @body = ''
       @status = :topostpone
 
       file.notes << self
@@ -68,7 +64,7 @@ module LazyMode
 
     def body(body = nil)
       @body = body if body
-      @body
+      @body or ''
     end
 
     def scheduled(date = nil)
@@ -82,6 +78,10 @@ module LazyMode
     def status(status = nil)
       @status = status if status
       @status
+    end
+
+    def file_name
+      @file.name
     end
 
     def scheduled_for?(date)
