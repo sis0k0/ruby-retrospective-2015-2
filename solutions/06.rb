@@ -25,20 +25,21 @@ module TurtleGraphics
     private
 
     def move
-      if @x.nil? and @y.nil?
-        spawn_at(0, 0)
-      end
+      spawn_at(0, 0) if @x.nil? and @y.nil?
 
+      move_at_direction
+      @x = @x < 0 ? @matrix.row_count - 1 : @x % @matrix.row_count
+      @y = @y < 0 ? @matrix.column_count - 1 : @y % @matrix.column_count
+      @matrix.rows[@x][@y] += 1
+    end
+
+    def move_at_direction
       case @direction
         when 0 then @y -= 1
         when 1 then @x -= 1
         when 2 then @y += 1
         when 3 then @x += 1
       end
-
-      @x = @x < 0 ? @matrix.row_count - 1 : @x % @matrix.row_count
-      @y = @y < 0 ? @matrix.column_count - 1 : @y % @matrix.column_count
-      @matrix.rows[@x][@y] += 1
     end
 
     def turn_left
@@ -78,11 +79,23 @@ module TurtleGraphics
 
         canvas = []
         matrix.rows.each do |row|
-          row.each { |cell| canvas << @symbols[cell / (max_frequency * interval)] }
+          row.each { |cell| canvas << symbol(cell, max_frequency) }
           canvas << "\n"
         end
 
         canvas.join
+      end
+
+      private
+
+      def symbol(cell, max_frequency)
+        index = symbol_index(cell, max_frequency)
+        (index == @symbols.length) ? @symbols.last : @symbols[index]
+      end
+
+      def symbol_index(cell, max_frequency)
+        interval = (1.0 / max_frequency).to_f
+        cell / (max_frequency * interval)
       end
     end
 
@@ -140,19 +153,16 @@ module TurtleGraphics
       end
 
       def generate_table(matrix)
-        max_frequency = calculate_max_frequency(matrix)
-
         table = ["<table>"]
         matrix.rows.each do |row|
           table << "<tr>"
           row.each do |cell|
-            cell_intensity = cell.to_f / max_frequency
-            table << "<td style='opacity: #{cell_intensity}'></td>"
+            cell_intensity = cell.to_f / calculate_max_frequency(matrix)
+            table << '<td style="opacity: %.2f"></td>' % cell_intensity
           end
           table << "</tr>"
         end
-        table << "</table>"
-        table.join
+        (table << "</table>").join
       end
     end
   end
