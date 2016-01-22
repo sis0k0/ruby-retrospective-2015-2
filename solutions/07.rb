@@ -5,8 +5,10 @@ module LazyMode
 
   class Date
     include Comparable
+
     PREFIX = '0'
     DAYS_PER_IDENTIFIER = {d: 1, w: 7, m: 30}
+
     attr_accessor :year, :month, :day, :step
 
     def initialize(string)
@@ -16,15 +18,15 @@ module LazyMode
       @day = date[2]
 
       repeat = string.split(' ')[1]
-      @step = calculate_step(repeat) if not repeat.nil?
+      @step = calculate_step(repeat) unless repeat.nil?
     end
 
     def <=>(other)
       [@year, @month, @day] <=> [other.year, other.month, other.day]
     end
 
-    def increase_days(step = @step)
-      @day += step
+    def +(days)
+      @day += days
       put_in_ranges
       self
     end
@@ -95,7 +97,7 @@ module LazyMode
     def scheduled_for?(date)
       note_date = @date.clone
       while(not note_date.step.nil? and date > note_date)
-        note_date.increase_days
+        note_date + note_date.step
       end
 
       note_date == date
@@ -131,7 +133,7 @@ module LazyMode
 
     def weekly_agenda(from)
       week = []
-      0.upto(6) { |i| week << from.dup.increase_days(i) }
+      0.upto(6) { |i| week << from.dup + i }
 
       weekly_notes = week.map { |day| daily_notes(day) }.flatten!
 
