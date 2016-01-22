@@ -16,7 +16,7 @@ module LazyMode
       @year, @month, @day = date
 
       repeat = string.split(' ')[1]
-      @step = calculate_step(repeat) unless repeat.nil?
+      @step = calculate_step(repeat) if repeat
 
       @string = string
     end
@@ -146,10 +146,10 @@ module LazyMode
     end
 
     def where(status: nil, tag: nil, text: nil)
-      notes = @notes.dup
-      filter_by_status(notes, status) unless status.nil?
-      filter_by_tag(notes, tag) unless tag.nil?
-      filter_by_text(notes, text) unless text.nil?
+      notes = @notes.clone
+      filter_by_status(notes, status) if status
+      filter_by_tag(notes, tag) if tag
+      filter_by_text(notes, text) if text
 
       self.class.new(notes)
     end
@@ -157,15 +157,15 @@ module LazyMode
     private
 
     def filter_by_status(notes, status)
-      notes.reject! { |note| note.status != status }
+      notes.select! { |note| note.status == status }
     end
 
     def filter_by_tag(notes, tag)
-      notes.reject! { |note| not (note.tags.include? tag) }
+      notes.select! { |note| note.tags.include? tag }
     end
 
     def filter_by_text(notes, text)
-      notes.reject! { |note| not (note.header =~ text or note.body =~ text) }
+      notes.select! { |note| note.header =~ text or note.body =~ text }
     end
   end
 end
