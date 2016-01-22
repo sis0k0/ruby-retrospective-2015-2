@@ -75,17 +75,14 @@ module TurtleGraphics
 
       def build(matrix)
         @matrix = matrix
-
-        canvas = []
-        matrix.rows.each do |row|
-          row.each { |cell| canvas << symbol(cell) }
-          canvas << "\n"
-        end
-
-        canvas.join
+        matrix.rows.map { |row| join_row(row) }.join("\n")
       end
 
       private
+
+      def join_row(row)
+        row.map { |cell| symbol(cell) }.join
+      end
 
       def symbol(cell)
         index = symbol_index(cell)
@@ -154,16 +151,13 @@ module TurtleGraphics
       end
 
       def table(matrix)
-        table = ["<table>"]
-        matrix.rows.each { |row| table << join_row(row) }
-        table << "</table>"
-        table.join
+        rows = matrix.rows.map { |row| join_row(row) }.join
+        "<table>#{rows}</table>"
       end
 
       def join_row(row)
-        result = "<tr>"
-        row.each { |cell| result << join_cell(cell) }
-        result << "</tr>"
+        cells = row.map { |cell| join_cell(cell) }.join
+        "<tr>#{cells}</tr>"
       end
 
       def join_cell(cell)
