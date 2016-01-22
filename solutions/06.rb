@@ -28,8 +28,8 @@ module TurtleGraphics
       spawn_at(0, 0) if @x.nil? and @y.nil?
 
       move_at_direction
-      @x = @x < 0 ? @matrix.row_count - 1 : @x % @matrix.row_count
-      @y = @y < 0 ? @matrix.column_count - 1 : @y % @matrix.column_count
+      @x %= @matrix.column_count
+      @y %= @matrix.row_count
       @matrix.rows[@x][@y] += 1
     end
 
