@@ -92,25 +92,23 @@ module LazyMode
       @status
     end
 
-    def scheduled_for(date)
+    def scheduled_for?(date)
       note_date = @date.clone
       while(not note_date.step.nil? and date > note_date)
         note_date.increase_days
       end
 
-      note_at(date) if note_date == date
+      note_date == date
+    end
+
+    def on(date)
+      new_note = self.clone
+      new_note.date = date
+      new_note
     end
 
     def note(header, *tags, &block)
       new_note = self.class.new(header, @file, *tags, &block)
-    end
-
-    private
-
-    def note_at(date)
-      new_note = self.clone
-      new_note.date = date
-      new_note
     end
   end
 
@@ -143,7 +141,8 @@ module LazyMode
     private
 
     def daily_notes(date)
-      @notes.map { |note| note.scheduled_for(date) }.compact
+      @notes.select { |note| note.scheduled_for?(date) }.
+        map { |note| note.on(date) }
     end
   end
 
