@@ -19,7 +19,7 @@ module TurtleGraphics
 
     def draw(canvas = nil)
       self.instance_eval(&Proc.new) if block_given?
-      canvas != nil ? canvas.build(@matrix) : @matrix.rows
+      canvas.nil? ? @matrix.rows : canvas.build(@matrix)
     end
 
     private
