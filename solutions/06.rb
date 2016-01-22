@@ -158,7 +158,7 @@ module TurtleGraphics
           table << "<tr>"
           row.each do |cell|
             cell_intensity = cell.to_f / calculate_max_frequency(matrix)
-            table << '<td style="opacity: %.2f"></td>' % cell_intensity
+            table << format('<td style="opacity: %.2f"></td>', cell_intensity)
           end
           table << "</tr>"
         end
