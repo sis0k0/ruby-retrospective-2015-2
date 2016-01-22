@@ -61,7 +61,8 @@ module LazyMode
   class Note
     attr_reader :header, :body, :status, :tags
     attr_reader :file_name, :file
-    attr_reader :scheduled, :date
+    attr_reader :scheduled
+    attr_accessor :date
 
     def initialize(header, file, *tags, &block)
       @header, @file, @tags = header, file, tags
@@ -92,14 +93,24 @@ module LazyMode
     end
 
     def scheduled_for(date)
-      while(not @date.step.nil? and date > @date)
-        @date.increase_days
+      note_date = @date.clone
+      while(not note_date.step.nil? and date > note_date)
+        note_date.increase_days
       end
-      @date == date
+
+      note_at(date) if note_date == date
     end
 
     def note(header, *tags, &block)
       new_note = self.class.new(header, @file, *tags, &block)
+    end
+
+    private
+
+    def note_at(date)
+      new_note = self.clone
+      new_note.date = date
+      new_note
     end
   end
 
@@ -124,9 +135,7 @@ module LazyMode
       week = []
       0.upto(6) { |i| week << from.dup.increase_days(i) }
 
-      weekly_notes = []
-      week.each { |day| weekly_notes << daily_notes(day) }
-      weekly_notes.flatten!
+      weekly_notes = week.map { |day| daily_notes(day) }.flatten!
 
       Agenda.new weekly_notes
     end
@@ -134,7 +143,7 @@ module LazyMode
     private
 
     def daily_notes(date)
-      @notes.select { |note| note.scheduled_for(date) }
+      @notes.map { |note| note.scheduled_for(date) }.compact
     end
   end
 
