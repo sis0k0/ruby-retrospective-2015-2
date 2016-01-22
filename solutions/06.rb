@@ -147,22 +147,27 @@ module TurtleGraphics
       def body(matrix)
         %{
           <body>
-            #{generate_table(matrix)}
+            #{table(matrix)}
           </body>
         }
       end
 
-      def generate_table(matrix)
+      def table(matrix)
+        max_frequency = calculate_max_frequency(matrix)
+
         table = ["<table>"]
-        matrix.rows.each do |row|
-          table << "<tr>"
-          row.each do |cell|
-            cell_intensity = cell.to_f / calculate_max_frequency(matrix)
-            table << format('<td style="opacity: %.2f"></td>', cell_intensity)
-          end
-          table << "</tr>"
+        matrix.rows.each { |row| table << join_row(row, max_frequency) }
+        table << "</table>"
+        table.join
+      end
+
+      def join_row(row, max_frequency)
+        result = "<tr>"
+        row.each do |cell|
+          cell_intensity = cell.to_f / max_frequency
+          result << format('<td style="opacity: %.2f"></td>', cell_intensity)
         end
-        (table << "</table>").join
+        result << "</tr>"
       end
     end
   end
