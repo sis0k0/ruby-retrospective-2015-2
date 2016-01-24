@@ -1,4 +1,7 @@
 class Spreadsheet
+  DIGIT_PATTERN = /^\d+$/
+  ROW_DELIMITER = /\n/
+  CELL_DELIMITER = /\t|  /
 
   class Error < StandardError
     class InvalidCellIndexError
@@ -26,20 +29,18 @@ class Spreadsheet
   end
 
   def to_s
-    @rows.map.with_index { |row, index| row_to_s(row) }.
-      join("\n")
+    @rows.map.with_index { |row, index| row_to_s(row) }.join("\n")
   end
 
   private
 
   def row_to_s(row)
-    row.map.with_index { |cell, index| cell.value }.
-      join("\t")
+    row.map.with_index { |cell, index| cell.value }.join("\t")
   end
 
   def split_to_cells(table)
     @rows = table.strip.
-      split(/\n/).
+      split(ROW_DELIMITER).
       map.with_index { |row_data, index| new_row(row_data, index) }
 
     @cells = @rows.flatten
@@ -47,7 +48,7 @@ class Spreadsheet
 
   def new_row(data, index)
     data.strip.
-      split(/\t|  /).
+      split(CELL_DELIMITER).
       reject { |cell_content| cell_content == '' }.
       map.with_index do |cell_content, column_index|
         address = Address.new(index + 1, column_index + 1)
@@ -103,7 +104,7 @@ class Spreadsheet
     end
 
     def valid?(index = @index)
-      parts = index.split(/(\d+)/)
+      parts = index.split(DIGIT_PATTERN)
       parts.length == 2 and valid_column? parts.first and valid_row? parts.last
     end
 
@@ -116,7 +117,7 @@ class Spreadsheet
     end
 
     def valid_row?(row)
-      not row.match(/^\d+$/).nil?
+      not row.match(DIGIT_PATTERN).nil?
     end
 
     def column_index
@@ -219,8 +220,7 @@ expected #{required}, got #{given}" unless given == required
         raise Error, "Invalid expression '#{@content[1..-1]}'"
       end
 
-      @content.slice(FORMULA_NAME_START_INDEX..(beginning - 1)).
-        to_s
+      @content.slice(FORMULA_NAME_START_INDEX..(beginning - 1)).to_s
     end
 
     def args
@@ -244,10 +244,10 @@ expected #{required}, got #{given}" unless given == required
 
     def argument_to_float(argument, parts)
       if parts.length == 1
-        argument.to_f if parts.first.match(/^\d+$/)
+        argument.to_f if parts.first.match(DIGIT_PATTERN)
       elsif parts.length == 2
-        characteristic = parts.first.match(/^\d+$/)
-        mantissa = parts.last.match(/^\d+$/)
+        characteristic = parts.first.match(DIGIT_PATTERN)
+        mantissa = parts.last.match(DIGIT_PATTERN)
         argument.to_f if (characteristic and mantissa)
       end
     end
