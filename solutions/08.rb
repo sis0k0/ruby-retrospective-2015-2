@@ -18,13 +18,13 @@ class Spreadsheet
 
   def cell_at(index)
     cell = @cells.find { |cell| cell.at?(index) }
-    raise Error, "Cell '#{index}' does not exist" if cell.nil?
+    raise Error, "Cell '#{index}' does not exist" unless cell
     cell.content
   end
 
   def [](index)
     cell = @cells.find { |cell| cell.at?(index) }
-    raise Error, "Cell '#{index}' does not exist" if cell.nil?
+    raise Error, "Cell '#{index}' does not exist" unless cell
     cell.value
   end
 
@@ -66,18 +66,11 @@ class Spreadsheet
     end
 
     def value
-      calculate_value @content
+      Formula.new(content, @parent).value
     end
 
     def at?(index)
       @address.index == index
-    end
-
-    private
-
-    def calculate_value(content)
-      formula = Formula.new(content, @parent)
-      formula.value
     end
   end
 
@@ -117,7 +110,7 @@ class Spreadsheet
     end
 
     def valid_row?(row)
-      not row.match(DIGIT_PATTERN).nil?
+      row.match(DIGIT_PATTERN)
     end
 
     def column_index
