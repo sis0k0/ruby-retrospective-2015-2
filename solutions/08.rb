@@ -225,12 +225,10 @@ expected #{required}, got #{given}" unless given == required
 
     def args
       name_end_index = @content.index('(')
-      args = []
+
       @content.slice((name_end_index + 1)..-2).
         split(',').
-        map { |argument| args << parse(argument) }
-
-      args
+        map { |argument| parse(argument) }
     end
 
     def parse(argument)
