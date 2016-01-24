@@ -5,7 +5,7 @@ class Spreadsheet
     end
   end
 
-  def initialize(table)
+  def initialize(table = '')
     split_to_cells(table)
   end
 
@@ -26,30 +26,21 @@ class Spreadsheet
   end
 
   def to_s
-    table = ''
-    @rows.each_with_index do |row, index|
-      table << row_to_s(row)
-      table << "\n" unless index == @rows.length - 1
-    end
-    table
+    @rows.map.with_index { |row, index| row_to_s(row) }.
+      join("\n")
   end
 
   private
 
   def row_to_s(row)
-    table = ''
-    row.each_with_index do |cell, index|
-      table << cell.value
-      table << "\t" unless index == row.length - 1
-    end
-    table
+    row.map.with_index { |cell, index| cell.value }.
+      join("\t")
   end
 
   def split_to_cells(table)
-    @rows = []
-    table.strip.
+    @rows = table.strip.
       split(/\n/).
-      each_with_index { |row_data, index| @rows << new_row(row_data, index) }
+      map.with_index { |row_data, index| new_row(row_data, index) }
 
     @cells = @rows.flatten
   end
@@ -57,8 +48,8 @@ class Spreadsheet
   def new_row(data, index)
     data.strip.
       split(/\t|  /).
-      map.
-      with_index do |cell_content, column_index|
+      reject { |cell_content| cell_content == '' }.
+      map.with_index do |cell_content, column_index|
         address = Address.new(index + 1, column_index + 1)
         Cell.new(self, address, cell_content.strip)
       end
@@ -66,6 +57,7 @@ class Spreadsheet
 
   class Cell
     attr_reader :content
+
     def initialize(parent, address, content)
       @parent = parent
       @address = address
@@ -155,7 +147,7 @@ class Spreadsheet
       format_result(args.reduce(:*))
     end
 
-    def take_out(*args)
+    def subtract(*args)
       check_exact_number_of_arguments(2, args, __callee__.to_s)
       format_result(args.first - args.last)
     end
@@ -172,14 +164,14 @@ class Spreadsheet
 
     def check_number_of_arguments(required, args, formula_name)
       given = args.flatten!.count
-      raise Error, "Wrong number of arguments for '#{formula_name}':\
-   expected at least #{required}, got #{given}" unless given >= required
+      raise Error, "Wrong number of arguments for '#{formula_name.upcase}': \
+expected at least #{required}, got #{given}" unless given >= required
     end
 
     def check_exact_number_of_arguments(required, args, formula_name)
       given = args.flatten!.count
-      raise Error, "Wrong number of arguments for '#{formula_name}':\
-   expected #{required}, got #{given}" unless given == required
+      raise Error, "Wrong number of arguments for '#{formula_name.upcase}': \
+expected #{required}, got #{given}" unless given == required
     end
 
     def format_result(number)
@@ -204,8 +196,6 @@ class Spreadsheet
       else
         @content
       end
-    rescue NoMethodError
-      raise Error, "Unknown function '#{name}'"
     end
 
     private
@@ -216,18 +206,20 @@ class Spreadsheet
 
     def method_name
       case name
-      when 'ADD' then 'add'
-      when 'MULTIPLY' then 'multiply'
-      when 'SUBSTRACT' then 'take_out'
-      when 'DIVIDE' then 'divide'
-      when 'MOD' then 'mod'
+      when 'ADD', 'MULTIPLY', 'SUBTRACT', 'DIVIDE', 'MOD' then name.downcase
+      else raise Error, "Unknown function '#{name}'"
       end
     end
 
     def name
-      name_end_index = @content.index('(')
-      raise Error, "Invalid expression '#{@content}'" if name_end_index.nil?
-      @content.slice(FORMULA_NAME_START_INDEX..(name_end_index - 1)).
+      beginning = @content.index('(')
+      finish = @content.index(')')
+
+      if beginning.nil? or finish.nil?
+        raise Error, "Invalid expression '#{@content[1..-1]}'"
+      end
+
+      @content.slice(FORMULA_NAME_START_INDEX..(beginning - 1)).
         to_s
     end
 
