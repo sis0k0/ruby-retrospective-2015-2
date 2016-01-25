@@ -131,41 +131,36 @@ class Spreadsheet
   end
 
   module Formulas
-    def add(*args)
-      check_number_of_arguments(2, args, __callee__.to_s)
-      format_result(args.reduce(:+))
+    ARGUMENTS_ERROR = "Wrong number of arguments for '%s': %s"
+
+    def add(a, b, *other)
+      format_result([a, b, other].flatten.reduce(:+))
     end
 
-    def multiply(*args)
-      check_number_of_arguments(2, args, __callee__.to_s)
-      format_result(args.reduce(:*))
+    def multiply(a, b, *other)
+      format_result([a, b, other].flatten.reduce(:*))
     end
 
-    def subtract(*args)
-      check_exact_number_of_arguments(2, args, __callee__.to_s)
-      format_result(args.first - args.last)
+    def subtract(a, b)
+      format_result(a - b)
     end
 
-    def divide(*args)
-      check_exact_number_of_arguments(2, args, __callee__.to_s)
-      format_result(args.first / args.last)
+    def divide(a, b)
+      format_result(a / b)
     end
 
-    def mod(*args)
-      check_exact_number_of_arguments(2, args, __callee__.to_s)
-      format_result(args.first % args.last)
+    def mod(a, b)
+      format_result(a % b)
     end
 
-    def check_number_of_arguments(required, args, formula_name)
-      given = args.flatten!.count
-      raise Error, "Wrong number of arguments for '#{formula_name.upcase}': \
-expected at least #{required}, got #{given}" unless given >= required
-    end
-
-    def check_exact_number_of_arguments(required, args, formula_name)
-      given = args.flatten!.count
-      raise Error, "Wrong number of arguments for '#{formula_name.upcase}': \
-expected #{required}, got #{given}" unless given == required
+    def check_number_of_arguments(args_count, function)
+      if function.arity > 0 and function.arity != args_count
+        raise Error, ARGUMENTS_ERROR % [function.original_name.to_s.upcase,
+          "expected #{function.arity}, got #{args_count}"]
+      elsif function.arity < -1 and function.arity.abs - 1 > args_count
+        raise Error, ARGUMENTS_ERROR % [function.original_name.to_s.upcase,
+          "expected at least #{function.arity.abs - 1}, got #{args_count}"]
+      end
     end
 
     def format_result(number)
@@ -174,8 +169,6 @@ expected #{required}, got #{given}" unless given == required
   end
 
   class Formula
-    FORMULA_NAME_START_INDEX = 1
-
     include Formulas
 
     def initialize(content, table)
@@ -184,12 +177,10 @@ expected #{required}, got #{given}" unless given == required
     end
 
     def value
-      if formula?
-        address = Address.new(@content[1..-1])
-        address.valid? ? @table[address.index] : self.send(method_name, args)
-      else
-        @content
-      end
+      return @content unless formula?
+
+      address = Address.new(@content[1..-1])
+      address.valid? ? @table[address.index] : evaluate
     end
 
     private
@@ -198,22 +189,22 @@ expected #{required}, got #{given}" unless given == required
       @content[0] == '='
     end
 
+    def evaluate
+      formula = method(method_name)
+      check_number_of_arguments(args.size, formula)
+      self.send(method_name, *args)
+    end
+
     def method_name
+      if @content.index('(').nil? or @content.index(')').nil?
+        raise Error, "Invalid expression '#{@content[1..-1]}'"
+      end
+
+      name = @content.slice(1..(@content.index('(') - 1)).to_s
       case name
       when 'ADD', 'MULTIPLY', 'SUBTRACT', 'DIVIDE', 'MOD' then name.downcase
       else raise Error, "Unknown function '#{name}'"
       end
-    end
-
-    def name
-      beginning = @content.index('(')
-      finish = @content.index(')')
-
-      if beginning.nil? or finish.nil?
-        raise Error, "Invalid expression '#{@content[1..-1]}'"
-      end
-
-      @content.slice(FORMULA_NAME_START_INDEX..(beginning - 1)).to_s
     end
 
     def args
