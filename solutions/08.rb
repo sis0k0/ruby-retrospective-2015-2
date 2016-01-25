@@ -66,7 +66,7 @@ class Spreadsheet
     end
 
     def value
-      Formula.new(content, @parent).value
+      Expression.new(content, @parent).value
     end
 
     def at?(index)
@@ -168,7 +168,7 @@ class Spreadsheet
     end
   end
 
-  class Formula
+  class Expression
     include Formulas
 
     def initialize(content, table)
