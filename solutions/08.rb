@@ -150,7 +150,7 @@ class Spreadsheet
     end
 
     def calculate
-      FormulaFactory.calculate(method_name, args)
+      Formula.new(method_name, args).result
     end
 
     def method_name
@@ -195,7 +195,7 @@ class Spreadsheet
     end
   end
 
-  class FormulaFactory
+  class Formula
     ARGUMENTS_ERROR = "Wrong number of arguments for '%s': expected %s"
     FORMULAS = {
       ADD: ->(a, b, *other) { [a, b, other].flatten.reduce(:+) },
@@ -205,29 +205,34 @@ class Spreadsheet
       MOD: ->(a, b) { a % b },
     }
 
-    class << self
-      def calculate(method_name, args)
-        @name = method_name
-        @formula = FORMULAS[method_name]
-        @args = args
+    def initialize(method_name, args)
+      @name = method_name
+      @args = args
+    end
 
-        check_number_of_arguments
-        format_result @formula.call(*args)
-      end
+    def result
+      check_number_of_arguments
+      format_result formula.call(*@args)
+    end
 
-      def check_number_of_arguments
-        if @formula.arity > 0 and @formula.arity != @args.size
-          raise Error, ARGUMENTS_ERROR %
-            [@name, "#{@formula.arity}, got #{@args.size}"]
-        elsif @formula.arity < -1 and @formula.arity.abs - 1 > @args.size
-          raise Error, ARGUMENTS_ERROR %
-            [@name, "at least #{@formula.arity.abs - 1}, got #{@args.size}"]
-        end
-      end
+    private
 
-      def format_result(number)
-        number == number.to_i ? number.to_i.to_s : ('%.2f' % number)
+    def formula
+      FORMULAS[@name]
+    end
+
+    def check_number_of_arguments
+      if formula.arity > 0 and formula.arity != @args.size
+        raise Error, ARGUMENTS_ERROR %
+          [@name, "#{formula.arity}, got #{@args.size}"]
+      elsif formula.arity < -1 and formula.arity.abs - 1 > @args.size
+        raise Error, ARGUMENTS_ERROR %
+          [@name, "at least #{formula.arity.abs - 1}, got #{@args.size}"]
       end
+    end
+
+    def format_result(number)
+      number == number.to_i ? number.to_i.to_s : ('%.2f' % number)
     end
   end
 end
