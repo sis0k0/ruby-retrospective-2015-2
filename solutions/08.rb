@@ -130,47 +130,7 @@ class Spreadsheet
     end
   end
 
-  module Formulas
-    ARGUMENTS_ERROR = "Wrong number of arguments for '%s': %s"
-
-    def add(a, b, *other)
-      format_result([a, b, other].flatten.reduce(:+))
-    end
-
-    def multiply(a, b, *other)
-      format_result([a, b, other].flatten.reduce(:*))
-    end
-
-    def subtract(a, b)
-      format_result(a - b)
-    end
-
-    def divide(a, b)
-      format_result(a / b)
-    end
-
-    def mod(a, b)
-      format_result(a % b)
-    end
-
-    def check_number_of_arguments(args_count, function)
-      if function.arity > 0 and function.arity != args_count
-        raise Error, ARGUMENTS_ERROR % [function.original_name.to_s.upcase,
-          "expected #{function.arity}, got #{args_count}"]
-      elsif function.arity < -1 and function.arity.abs - 1 > args_count
-        raise Error, ARGUMENTS_ERROR % [function.original_name.to_s.upcase,
-          "expected at least #{function.arity.abs - 1}, got #{args_count}"]
-      end
-    end
-
-    def format_result(number)
-      number == number.to_i ? number.to_i.to_s : ('%.2f' % number)
-    end
-  end
-
   class Expression
-    include Formulas
-
     def initialize(content, table)
       @content = content
       @table = table
@@ -180,7 +140,7 @@ class Spreadsheet
       return @content unless formula?
 
       address = Address.new(@content[1..-1])
-      address.valid? ? @table[address.index] : evaluate
+      address.valid? ? @table[address.index] : calculate
     end
 
     private
@@ -189,10 +149,8 @@ class Spreadsheet
       @content[0] == '='
     end
 
-    def evaluate
-      formula = method(method_name)
-      check_number_of_arguments(args.size, formula)
-      self.send(method_name, *args)
+    def calculate
+      FormulaFactory.calculate(method_name, args)
     end
 
     def method_name
@@ -200,9 +158,9 @@ class Spreadsheet
         raise Error, "Invalid expression '#{@content[1..-1]}'"
       end
 
-      name = @content.slice(1..(@content.index('(') - 1)).to_s
+      name = @content.slice(1..(@content.index('(') - 1))
       case name
-      when 'ADD', 'MULTIPLY', 'SUBTRACT', 'DIVIDE', 'MOD' then name.downcase
+      when 'ADD', 'MULTIPLY', 'SUBTRACT', 'DIVIDE', 'MOD' then name.to_sym
       else raise Error, "Unknown function '#{name}'"
       end
     end
@@ -233,6 +191,42 @@ class Spreadsheet
         characteristic = parts.first.match(DIGIT_PATTERN)
         mantissa = parts.last.match(DIGIT_PATTERN)
         argument.to_f if (characteristic and mantissa)
+      end
+    end
+  end
+
+  class FormulaFactory
+    ARGUMENTS_ERROR = "Wrong number of arguments for '%s': expected %s"
+    FORMULAS = {
+      ADD: ->(a, b, *other) { [a, b, other].flatten.reduce(:+) },
+      MULTIPLY: ->(a, b, *other) { [a, b, other].flatten.reduce(:*) },
+      SUBTRACT: ->(a, b) { a - b },
+      DIVIDE: ->(a, b) { a / b },
+      MOD: ->(a, b) { a % b },
+    }
+
+    class << self
+      def calculate(method_name, args)
+        @name = method_name
+        @formula = FORMULAS[method_name]
+        @args = args
+
+        check_number_of_arguments
+        format_result @formula.call(*args)
+      end
+
+      def check_number_of_arguments
+        if @formula.arity > 0 and @formula.arity != @args.size
+          raise Error, ARGUMENTS_ERROR %
+            [@name, "#{@formula.arity}, got #{@args.size}"]
+        elsif @formula.arity < -1 and @formula.arity.abs - 1 > @args.size
+          raise Error, ARGUMENTS_ERROR %
+            [@name, "at least #{@formula.arity.abs - 1}, got #{@args.size}"]
+        end
+      end
+
+      def format_result(number)
+        number == number.to_i ? number.to_i.to_s : ('%.2f' % number)
       end
     end
   end
